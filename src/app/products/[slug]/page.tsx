@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Breadcrumb, SpecificationTable, FAQItem } from '@/components/ui/CommonComponents';
 import { getProductBySlug, getRelatedProducts } from '@/data/products';;
-import { siteConfig } from '@/lib/config';
+import { siteConfig } from '@/lib/constants';
 
 export default function ProductDetailPage() {
   const params = useParams();
