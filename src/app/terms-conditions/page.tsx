@@ -11,7 +11,6 @@ export default function TermsConditionsPage() {
   return (
     <>
       <Breadcrumb
-        title="Terms & Conditions"
         items={[
           { label: "Home", href: "/" },
           { label: "Terms & Conditions" },
