@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, Textarea, Select, FileInput } from '@/components/ui/FormElements';
 import { Breadcrumb, SectionHeading } from '@/components/ui/CommonComponents';
 import { products } from '@/data/products';;
-import { siteConfig } from '@/lib/config';
+import { siteConfig } from '@/lib/constants';
 
 export default function QuotePage() {
   const searchParams = useSearchParams();
