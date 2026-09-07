@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "lint": "next lint"
   },
   "dependencies": {
     "next": "14.2.5",
@@ -18,9 +17,7 @@
     "zod": "^3.23.8",
     "lucide-react": "^0.408.0",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.4.0",
-    "next-seo": "^6.5.0",
-    "sharp": "^0.33.4"
+    "tailwind-merge": "^2.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
