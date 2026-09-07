@@ -23,14 +23,14 @@ interface SectionHeadingProps {
 
 export function SectionHeading({ badge, title, subtitle, className = '' }: SectionHeadingProps) {
   return (
-    <div className={&quot;mb-10 &quot;}>
+    <div className={'mb-10 ' + className}>
       {badge && (
-        <span className="inline-block rounded-full bg-primary-100 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary-700 mb-4">
+        <span className='inline-block rounded-full bg-primary-100 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary-700 mb-4'>
           {badge}
         </span>
       )}
-      <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">{title}</h2>
-      {subtitle && <p className="mt-3 text-lg text-gray-500">{subtitle}</p>}
+      <h2 className='text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl'>{title}</h2>
+      {subtitle && <p className='mt-3 text-lg text-gray-500'>{subtitle}</p>}
     </div>
   );
 }
@@ -44,10 +44,10 @@ interface FeatureCardProps {
 
 export function FeatureCard({ icon, title, description, className = '' }: FeatureCardProps) {
   return (
-    <div className={&quot;rounded-industrial-lg border border-industrial-200 bg-white p-6 hover:shadow-card-hover transition-all &quot;}>
-      <div className="mb-4 text-primary-600">{icon}</div>
-      <h3 className="text-lg font-semibold text-industrial-900 mb-2">{title}</h3>
-      <p className="text-sm text-industrial-600 leading-relaxed">{description}</p>
+    <div className={'rounded-industrial-lg border border-industrial-200 bg-white p-6 hover:shadow-card-hover transition-all ' + className}>
+      <div className='mb-4 text-primary-600'>{icon}</div>
+      <h3 className='text-lg font-semibold text-industrial-900 mb-2'>{title}</h3>
+      <p className='text-sm text-industrial-600 leading-relaxed'>{description}</p>
     </div>
   );
 }
