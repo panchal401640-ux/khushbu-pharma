@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/FormElements';
 import { SectionHeading, Breadcrumb } from '@/components/ui/CommonComponents';
-import { products, categories } from '@/lib/data';
+import { products, categories } from '@/data/products';;
 import { siteConfig } from '@/lib/config';
 
 export default function ProductsPage() {
