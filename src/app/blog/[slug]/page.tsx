@@ -48,7 +48,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
   const relatedProducts = post.relatedProducts
     ?.map((slug) => getProductBySlug(slug))
-    .filter(Boolean);
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   return (
     <main className="pt-24">
