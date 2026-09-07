@@ -4,7 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { SectionHeading, FeatureCard } from '@/components/ui/CommonComponents';
-import { categories, industriesData, products } from '@/lib/data';
+import { categories, products } from '@/data/products';
+import { industriesData } from '@/data/products';;
 import { siteConfig } from '@/lib/config';
 import { CTASection } from '@/components/layout/MobileCTA';
 
