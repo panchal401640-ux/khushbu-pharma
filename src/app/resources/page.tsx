@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Breadcrumb } from '@/components/ui/CommonComponents';
 import { siteConfig } from '@/lib/config';
-import { products } from '@/lib/data';
+import { products } from '@/data/products';;
 
 export default function ResourcesPage() {
   return (
