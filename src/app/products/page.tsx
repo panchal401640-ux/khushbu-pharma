@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/FormElements';
 import { SectionHeading, Breadcrumb } from '@/components/ui/CommonComponents';
 import { products, categories } from '@/data/products';;
-import { siteConfig } from '@/lib/config';
+import { siteConfig } from '@/lib/constants';
 
 export default function ProductsPage() {
   const [search, setSearch] = useState('');
