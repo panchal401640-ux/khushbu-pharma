@@ -11,7 +11,6 @@ export default function PrivacyPolicyPage() {
   return (
     <>
       <Breadcrumb
-        title="Privacy Policy"
         items={[
           { label: "Home", href: "/" },
           { label: "Privacy Policy" },
