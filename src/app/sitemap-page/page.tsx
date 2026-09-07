@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { Breadcrumb } from '@/components/ui/CommonComponents';
-import { products, categories, industriesData } from '@/lib/data';
+import { products, categories } from '@/data/products';
+import { industriesData } from '@/data/products';;
 
 export default function SitemapPage() {
   return (
