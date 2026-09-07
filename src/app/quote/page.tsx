@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea, Select, FileInput } from '@/components/ui/FormElements';
 import { Breadcrumb, SectionHeading } from '@/components/ui/CommonComponents';
-import { products } from '@/lib/data';
+import { products } from '@/data/products';;
 import { siteConfig } from '@/lib/config';
 
 export default function QuotePage() {
