@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { products } from '@/lib/data';
+import { products } from '@/data/products';;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://khushbupharmamachinery.com';
