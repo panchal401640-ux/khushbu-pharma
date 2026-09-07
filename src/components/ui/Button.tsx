@@ -22,7 +22,7 @@ export function Button({ variant = 'default', size = 'md', className = '', child
     lg: 'px-6 py-3 text-base',
   };
   return (
-    <button className={${base}   } {...props}>
+    <button className={base + ' ' + variants[variant] + ' ' + sizes[size] + ' ' + className} {...props}>
       {children}
     </button>
   );
