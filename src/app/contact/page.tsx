@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/FormElements';
 import { Breadcrumb } from '@/components/ui/CommonComponents';
-import { siteConfig } from '@/lib/config';
+import { siteConfig } from '@/lib/constants';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', company: '', country: '', subject: '', message: '' });
