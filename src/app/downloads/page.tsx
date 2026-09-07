@@ -3,7 +3,7 @@
 import React from 'react';
 import { Breadcrumb, EmptyState } from '@/components/ui/CommonComponents';
 import { Button } from '@/components/ui/Button';
-import { siteConfig } from '@/lib/config';
+import { siteConfig } from '@/lib/constants';
 
 const downloadCategories = [
   {
