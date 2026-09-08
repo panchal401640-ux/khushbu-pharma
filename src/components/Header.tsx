@@ -34,12 +34,12 @@ export default function Header() {
 
   return (
     <header
-      className={cn(
+      className="cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         scrolled
           ? "bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100"
           : "bg-white"
-      )}
+      )"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
@@ -122,20 +122,20 @@ export default function Header() {
 
       {/* Mobile Overlay */}
       <div
-        className={cn(
+        className="cn(
           "fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden",
           menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        )}
+        )"
         onClick={() => setMenuOpen(false)}
         aria-hidden="true"
       />
 
       {/* Mobile Drawer */}
       <div
-        className={cn(
+        className="cn(
           "fixed top-0 right-0 z-50 h-full w-72 bg-white shadow-2xl transition-transform duration-300 ease-in-out lg:hidden",
           menuOpen ? "translate-x-0" : "translate-x-full"
-        )}
+        )"
       >
         <div className="flex items-center justify-between px-4 h-16 border-b border-gray-100">
           <span className="text-sm font-bold text-primary-600">Menu</span>
