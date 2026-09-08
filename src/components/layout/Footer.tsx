@@ -1,19 +1,45 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { footerLinks, siteConfig } from '@/lib/constants';
 import { getCurrentYear } from '@/lib/constants';
 
 export function Footer() {
+  const [logo, setLogo] = useState('');
+  const [companyName, setCompanyName] = useState(siteConfig.name);
+
+  useEffect(() => {
+    const loadLogo = () => {
+      try {
+        const storedLogo = localStorage.getItem('kpm_logo');
+        if (storedLogo) setLogo(storedLogo);
+        const storedSettings = localStorage.getItem('kpm_settings');
+        if (storedSettings) {
+          const s = JSON.parse(storedSettings);
+          if (s.name) setCompanyName(s.name);
+        }
+      } catch {}
+    };
+    loadLogo();
+    window.addEventListener('kpm-logo-changed', loadLogo);
+    return () => window.removeEventListener('kpm-logo-changed', loadLogo);
+  }, []);
+
   return (
     <footer className="bg-industrial-900 text-white">
       <div className="container-main section-lg">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
           <div className="sm:col-span-2 lg:col-span-1">
             <Link href="/" className="inline-block">
-              <div className="flex flex-col">
-                <span className="text-lg font-bold tracking-tight leading-none">KHUSHBU</span>
-                <span className="text-xs font-medium text-primary-400 tracking-widest uppercase leading-none mt-0.5">Pharma Machinery</span>
-              </div>
+              {logo ? (
+                <img src={logo} alt={companyName} className="h-10 w-auto max-w-[140px] object-contain" />
+              ) : (
+                <div className="flex flex-col">
+                  <span className="text-lg font-bold tracking-tight leading-none">{companyName}</span>
+                  <span className="text-xs font-medium text-primary-400 tracking-widest uppercase leading-none mt-0.5">Pharma Machinery</span>
+                </div>
+              )}
             </Link>
             <p className="mt-4 text-sm text-industrial-400 leading-relaxed max-w-xs">
               {siteConfig.description}
