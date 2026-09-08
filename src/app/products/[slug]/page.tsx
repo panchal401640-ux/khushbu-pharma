@@ -4,14 +4,15 @@ import React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { Breadcrumb, SpecificationTable, FAQItem } from '@/components/ui/CommonComponents';
-import { getProductBySlug, getRelatedProducts } from '@/data/products';;
-import { siteConfig } from '@/lib/constants';
+import { useProductBySlug, useRelatedProducts } from '@/hooks/useLocalData';
+import { siteConfig } from '@/lib/config';
 
 export default function ProductDetailPage() {
   const params = useParams();
   const slug = params?.slug as string;
-  const product = getProductBySlug(slug);
+  const product = useProductBySlug(slug);
 
   if (!product) {
     return (
@@ -27,7 +28,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const relatedProducts = getRelatedProducts(slug, 3);
+  const relatedProducts = useRelatedProducts(slug, 3);
 
   return (
     <>
@@ -70,10 +71,26 @@ export default function ProductDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-2 space-y-12">
               {/* Image */}
-              <div className="aspect-video bg-industrial-100 rounded-industrial-lg flex items-center justify-center">
-                <svg className="h-32 w-32 text-industrial-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                </svg>
+              <div>
+                <ProductImage
+                  src={product.images?.[0]?.src || ''}
+                  alt={product.images?.[0]?.alt || product.name}
+                  name={product.name}
+                  className="w-full aspect-video object-cover rounded-industrial-lg"
+                />
+                {product.images && product.images.length > 1 && (
+                  <div className="grid grid-cols-4 gap-2 mt-4">
+                    {product.images.map((img, i) => (
+                      <ProductImage
+                        key={i}
+                        src={img.src}
+                        alt={img.alt || `${product.name} ${i + 1}`}
+                        name={`${product.name} ${i + 1}`}
+                        className="w-full h-20 object-cover rounded-industrial border border-industrial-200"
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Overview */}
