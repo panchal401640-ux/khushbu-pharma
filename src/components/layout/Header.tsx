@@ -10,6 +10,9 @@ export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [logo, setLogo] = useState('');
+  const [companyName, setCompanyName] = useState(siteConfig.name);
+  const [tagline, setTagline] = useState('Pharma Machinery');
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
@@ -25,6 +28,24 @@ export function Header() {
     }
   }, [isMobileMenuOpen]);
 
+  useEffect(() => {
+    const loadLogo = () => {
+      try {
+        const storedLogo = localStorage.getItem('kpm_logo');
+        if (storedLogo) setLogo(storedLogo);
+        const storedSettings = localStorage.getItem('kpm_settings');
+        if (storedSettings) {
+          const s = JSON.parse(storedSettings);
+          if (s.name) setCompanyName(s.name);
+          if (s.tagline) setTagline(s.tagline);
+        }
+      } catch {}
+    };
+    loadLogo();
+    window.addEventListener('kpm-logo-changed', loadLogo);
+    return () => window.removeEventListener('kpm-logo-changed', loadLogo);
+  }, []);
+
   return (
     <>
       <header
@@ -38,10 +59,14 @@ export function Header() {
         <div className="container-main">
           <div className="flex h-16 items-center justify-between lg:h-18">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-industrial-900 tracking-tight leading-none">KHUSHBU</span>
-                <span className="text-[10px] font-medium text-primary-700 tracking-widest uppercase leading-none mt-0.5">Pharma Machinery</span>
-              </div>
+              {logo ? (
+                <img src={logo} alt={companyName} className="h-10 w-auto max-w-[160px] object-contain" />
+              ) : (
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-industrial-900 tracking-tight leading-none">{companyName}</span>
+                  <span className="text-[10px] font-medium text-primary-700 tracking-widest uppercase leading-none mt-0.5">{tagline}</span>
+                </div>
+              )}
             </Link>
 
             <nav className="hidden lg:flex items-center gap-1">
@@ -135,7 +160,11 @@ export function Header() {
           <div className="absolute right-0 top-0 h-full w-[300px] bg-white shadow-2xl overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-8">
-                <span className="font-bold text-industrial-900">Menu</span>
+                {logo ? (
+                  <img src={logo} alt={companyName} className="h-8 w-auto max-w-[120px] object-contain" />
+                ) : (
+                  <span className="font-bold text-industrial-900">Menu</span>
+                )}
                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-industrial-100 rounded-industrial">
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
