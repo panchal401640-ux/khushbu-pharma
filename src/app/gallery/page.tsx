@@ -36,7 +36,7 @@ export default function GalleryPage() {
     <>
       <section className="bg-industrial-900 text-white section-sm">
         <div className="container-main">
-          <Breadcrumb items={[{ label: 'Gallery' }]} />
+          <Breadcrumb items={[{ label: 'Gallery' }]} className="mb-4 text-industrial-400 [&_a]:text-industrial-400 [&_span]:text-white" />
           <h1 className="text-3xl sm:text-4xl font-bold">Gallery</h1>
           <p className="mt-3 text-industrial-300">Machines, manufacturing process, and project installations.</p>
         </div>
@@ -49,7 +49,11 @@ export default function GalleryPage() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeCategory === cat.id ? 'bg-primary-700 text-white' : 'bg-industrial-100 text-industrial-700 hover:bg-industrial-200'}`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  activeCategory === cat.id
+                    ? 'bg-primary-700 text-white'
+                    : 'bg-industrial-100 text-industrial-700 hover:bg-industrial-200'
+                }`}
               >
                 {cat.name}
               </button>
