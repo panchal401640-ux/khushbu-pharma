@@ -11,7 +11,7 @@ interface BreadcrumbProps {
 }
 
 export function Breadcrumb({ items, className = '' }: BreadcrumbProps) {
-  return <div className={className}><BreadcrumbComponent items={items} /></div>;
+  return <div className="className"><BreadcrumbComponent items={items} /></div>;
 }
 
 interface SectionHeadingProps {
@@ -23,7 +23,7 @@ interface SectionHeadingProps {
 
 export function SectionHeading({ badge, title, subtitle, className = '' }: SectionHeadingProps) {
   return (
-    <div className={className ? 'mb-10 ' + className : 'mb-10'}>
+    <div className="className ? 'mb-10 ' + className : 'mb-10'">
       {badge && (
         <span className="inline-block rounded-full bg-primary-100 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary-700 mb-4">
           {badge}
