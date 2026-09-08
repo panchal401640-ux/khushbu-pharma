@@ -49,11 +49,7 @@ export default function GalleryPage() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className="`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  activeCategory === cat.id
-                    ? 'bg-primary-700 text-white'
-                    : 'bg-industrial-100 text-industrial-700 hover:bg-industrial-200'
-                "`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeCategory === cat.id ? 'bg-primary-700 text-white' : 'bg-industrial-100 text-industrial-700 hover:bg-industrial-200'}`}
               >
                 {cat.name}
               </button>
