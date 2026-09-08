@@ -3,10 +3,23 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import {
+  LayoutDashboard,
+  Package,
+  Bot,
+  FileText,
+  Image,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  ChevronRight,
+  Cog,
+} from 'lucide-react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (password: string) => boolean;
+  login: (username: string, password: string) => boolean;
   logout: () => void;
 }
 
@@ -18,7 +31,8 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-const ADMIN_PASSWORD = 'khushbu2024';
+const ADMIN_USERNAME = 'admin';
+const ADMIN_PASSWORD = 'khushbu@2024';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -30,8 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
-  const login = (password: string) => {
-    if (password === ADMIN_PASSWORD) {
+  const login = (username: string, password: string) => {
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
       localStorage.setItem('kpm_admin_auth', 'true');
       return true;
@@ -44,7 +58,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('kpm_admin_auth');
   };
 
-  if (loading) return <div className="min-h-screen bg-industrial-50 flex items-center justify-center">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-400 text-sm">Loading Admin Panel...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
@@ -53,16 +76,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-const sidebarItems = [
-  { label: 'Dashboard', href: '/admin', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-  { label: 'Products', href: '/admin/products', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-  { label: 'Enquiries', href: '/admin/enquiries', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-  { label: 'Categories', href: '/admin/categories', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
-  { label: 'Theme & Colors', href: '/admin/theme', icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },
-  { label: 'Page Editor', href: '/admin/pages', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
-  { label: 'AI Assistant', href: '/admin/ai', icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' },
-  { label: 'Photo Editor', href: '/admin/photo-editor', icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
-  { label: 'Site Settings', href: '/admin/settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+interface SidebarItem {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+}
+
+const sidebarItems: SidebarItem[] = [
+  {
+    label: 'Dashboard',
+    href: '/admin/dashboard',
+    icon: <LayoutDashboard className="w-5 h-5" />,
+  },
+  {
+    label: 'Products',
+    href: '/admin/products',
+    icon: <Package className="w-5 h-5" />,
+  },
+  {
+    label: 'DHRUV AI',
+    href: '/admin/dhruv',
+    icon: <Bot className="w-5 h-5" />,
+  },
+  {
+    label: 'Content',
+    href: '/admin/content',
+    icon: <FileText className="w-5 h-5" />,
+  },
+  {
+    label: 'Photos',
+    href: '/admin/photos',
+    icon: <Image className="w-5 h-5" />,
+  },
+  {
+    label: 'Settings',
+    href: '/admin/settings',
+    icon: <Settings className="w-5 h-5" />,
+  },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -77,60 +127,116 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-industrial-50 flex">
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-industrial-900 text-white transform transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 border-b border-industrial-800">
-          <h2 className="text-sm font-bold tracking-tight">KHUSHBU PHARMA</h2>
-          <p className="text-xs text-industrial-400 mt-0.5">Admin Panel</p>
+      {/* Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white flex flex-col transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* Logo */}
+        <div className="p-6 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+              <Cog className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold tracking-tight text-white">KPM</h1>
+              <p className="text-[10px] text-slate-400 leading-tight">
+                KHUSHBU PHARMA MACHINERY
+              </p>
+              <p className="text-[9px] text-blue-400 font-medium">Admin Panel</p>
+            </div>
+          </div>
         </div>
-        <nav className="p-4 space-y-1">
+
+        {/* Close button for mobile */}
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="lg:hidden absolute top-4 right-4 p-1 text-slate-400 hover:text-white"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {sidebarItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href === '/admin/dashboard' && pathname === '/admin');
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-industrial text-sm transition-colors ${isActive ? 'bg-primary-700 text-white' : 'text-industrial-300 hover:bg-industrial-800 hover:text-white'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
               >
-                <svg className="h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
-                </svg>
+                {item.icon}
                 {item.label}
+                {isActive && (
+                  <ChevronRight className="w-4 h-4 ml-auto opacity-60" />
+                )}
               </Link>
             );
           })}
         </nav>
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-industrial-800">
-          <div className="flex items-center justify-between">
-            <a href="/" target="_blank" className="text-xs text-industrial-400 hover:text-white">
+
+        {/* Bottom section */}
+        <div className="p-4 border-t border-slate-800">
+          <div className="flex items-center justify-between mb-3">
+            <a
+              href="/"
+              target="_blank"
+              className="text-xs text-slate-400 hover:text-white transition-colors"
+            >
               View Website ↗
             </a>
-            <button onClick={logout} className="text-xs text-red-400 hover:text-red-300">
-              Logout
-            </button>
           </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 rounded-xl text-sm font-medium transition-all"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
         </div>
       </aside>
 
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-industrial-200 h-16 flex items-center px-4 lg:px-6 sticky top-0 z-30">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 -ml-2 hover:bg-industrial-100 rounded-industrial mr-3">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+        {/* Top bar */}
+        <header className="bg-white border-b border-slate-200 h-16 flex items-center px-4 lg:px-6 sticky top-0 z-30 shadow-sm">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-2 -ml-2 hover:bg-slate-100 rounded-lg mr-3 transition-colors"
+          >
+            <Menu className="w-5 h-5 text-slate-600" />
           </button>
-          <h1 className="text-lg font-semibold text-industrial-900">
-            {sidebarItems.find(i => i.href === pathname)?.label || 'Admin'}
+          <h1 className="text-lg font-semibold text-slate-900">
+            {sidebarItems.find((i) => i.href === pathname)?.label || 'Admin'}
           </h1>
+          <div className="ml-auto flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              System Online
+            </div>
+          </div>
         </header>
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
-          {children}
-        </main>
+
+        {/* Page content */}
+        <main className="flex-1 p-4 lg:p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );
