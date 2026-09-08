@@ -13,7 +13,7 @@ export default function SectionHeading({
 }: SectionHeadingProps) {
   return (
     <div
-      className={`mb-10 ${centered ? "text-center" : ""} ${className}`}
+      className="`mb-10 ${centered ? "text-center" : """ ${className}`}
     >
       <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
         {title}
