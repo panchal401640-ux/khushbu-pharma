@@ -1128,10 +1128,97 @@ export function searchProducts(query: string): Product[] {
   );
 }
 
-export function getRelatedProducts(productId: string, limit = 4): Product[] {
-  const product = products.find((p) => p.id === productId);
-  if (!product) return products.slice(0, limit);
-  return products
-    .filter((p) => p.id !== productId && (p.category === product.category || p.industries.some((i) => product.industries.includes(i))))
-    .slice(0, limit);
+// ── Industries Data ──
+export interface IndustryData {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  image: { src: string; alt: string };
+  relevantProducts: string[];
+  applications: string[];
+}
+
+export const industriesData: IndustryData[] = [
+  {
+    id: 'pharmaceutical',
+    slug: 'pharmaceutical',
+    name: 'Pharmaceutical',
+    description: 'GMP-compliant machinery for tablet, capsule, and oral solid dosage manufacturing. Equipment designed to meet stringent regulatory requirements.',
+    image: { src: '/images/industries/pharmaceutical.jpg', alt: 'Pharmaceutical Industry' },
+    relevantProducts: ['fluid-bed-dryer', 'rapid-mixing-granulator', 'octagonal-blender', 'coating-pan', 'rotocone-vacuum-dryer'],
+    applications: ['Tablet Manufacturing', 'Capsule Production', 'Granule Processing', 'Powder Blending'],
+  },
+  {
+    id: 'nutraceutical',
+    slug: 'nutraceutical',
+    name: 'Nutraceutical',
+    description: 'Equipment for dietary supplement and functional food manufacturing with gentle handling of active ingredients.',
+    image: { src: '/images/industries/nutraceutical.jpg', alt: 'Nutraceutical Industry' },
+    relevantProducts: ['fluid-bed-dryer', 'rapid-mixing-granulator', 'mass-mixer', 'coating-pan'],
+    applications: ['Supplement Tablets', 'Protein Powders', 'Herbal Extracts', 'Functional Foods'],
+  },
+  {
+    id: 'chemical',
+    slug: 'chemical',
+    name: 'Chemical',
+    description: 'Corrosion-resistant equipment for specialty and fine chemical processing applications.',
+    image: { src: '/images/industries/chemical.jpg', alt: 'Chemical Industry' },
+    relevantProducts: ['rotocone-vacuum-dryer', 'filter-press', 'storage-vessel', 'mixing-vessel'],
+    applications: ['Fine Chemicals', 'Specialty Compounds', 'Chemical Synthesis', 'Reaction Processing'],
+  },
+  {
+    id: 'food-processing',
+    slug: 'food-processing',
+    name: 'Food Processing',
+    description: 'Hygienic design machinery for food ingredient and additive production.',
+    image: { src: '/images/industries/food-processing.jpg', alt: 'Food Processing Industry' },
+    relevantProducts: ['fluid-bed-dryer', 'ribbon-blender', 'vibro-sifter', 'storage-vessel'],
+    applications: ['Spice Processing', 'Flour Milling', 'Food Additives', 'Ingredient Blending'],
+  },
+  {
+    id: 'cosmetics',
+    slug: 'cosmetics',
+    name: 'Cosmetics',
+    description: 'Precision equipment for cosmetic and personal care product manufacturing.',
+    image: { src: '/images/industries/cosmetics.jpg', alt: 'Cosmetics Industry' },
+    relevantProducts: ['octacone-blender', 'mass-mixer', 'mixing-vessel', 'coating-pan'],
+    applications: ['Cream Manufacturing', 'Powder Blending', 'Color Coating', 'Personal Care Products'],
+  },
+  {
+    id: 'ayurvedic-herbal',
+    slug: 'ayurvedic-herbal',
+    name: 'Ayurvedic & Herbal',
+    description: 'Traditional medicine processing equipment with gentle handling for natural products.',
+    image: { src: '/images/industries/ayurvedic.jpg', alt: 'Ayurvedic and Herbal Industry' },
+    relevantProducts: ['octagonal-blender', 'tray-dryer', 'vibro-sifter', 'mass-mixer'],
+    applications: ['Herbal Powder Processing', 'Ayurvedic Tablets', 'Natural Extracts', 'Traditional Medicine'],
+  },
+  {
+    id: 'rnd',
+    slug: 'rnd',
+    name: 'Research & Development',
+    description: 'Lab and pilot-scale equipment for formulation development and process optimization.',
+    image: { src: '/images/industries/rnd.jpg', alt: 'Research and Development' },
+    relevantProducts: ['fluid-bed-dryer', 'rapid-mixing-granulator', 'octagonal-blender', 'coating-pan'],
+    applications: ['Formulation Development', 'Process Optimization', 'Pilot Scale Production', 'Lab Research'],
+  },
+  {
+    id: 'specialty-chemicals',
+    slug: 'specialty-chemicals',
+    name: 'Specialty Chemicals',
+    description: 'Custom fabricated equipment for niche chemical applications requiring specialized materials.',
+    image: { src: '/images/industries/specialty-chemicals.jpg', alt: 'Specialty Chemicals' },
+    relevantProducts: ['rotocone-vacuum-dryer', 'filter-press', 'zero-hold-up-filter', 'manufacturing-vessel'],
+    applications: ['Agrochemicals', 'Dyes & Pigments', 'Electronic Chemicals', 'Water Treatment Chemicals'],
+  },
+];
+
+export function getRelatedProducts(slug: string, limit = 4): Product[] {
+  const product = products.find(p => p.slug === slug);
+  if (!product) return [];
+  return products.filter(p =>
+    p.slug !== slug &&
+    (p.category === product.category || p.industries.some(i => product.industries.includes(i)))
+  ).slice(0, limit);
 }
