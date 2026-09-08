@@ -3,7 +3,8 @@ import { Inter } from 'next/font/google';
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
 import { MobileStickyBar, FloatingWhatsAppButton } from '@/components/layout/MobileCTA';
-import { siteConfig } from '@/lib/config';
+import { siteConfig } from '@/lib/constants';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -35,17 +36,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="inter.variable">
+    <html lang="en" className={inter.variable}>
       <head>
         <link rel="icon" href="/favicon.ico" />
         <link rel="canonical" href={siteConfig.url} />
       </head>
       <body className="min-h-screen flex flex-col">
+        <ThemeProvider>
         <Header />
         <main className="flex-1 pt-16 lg:pt-18">{children}</main>
         <Footer />
         <MobileStickyBar />
         <FloatingWhatsAppButton />
+        </ThemeProvider>
       </body>
     </html>
   );
