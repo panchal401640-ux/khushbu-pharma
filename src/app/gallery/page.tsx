@@ -36,7 +36,7 @@ export default function GalleryPage() {
     <>
       <section className="bg-industrial-900 text-white section-sm">
         <div className="container-main">
-          <Breadcrumb items={[{ label: 'Gallery' }]} className="mb-4 text-industrial-400 [&_a]:text-industrial-400 [&_span]:text-white" />
+          <Breadcrumb items={[{ label: 'Gallery' }]} />
           <h1 className="text-3xl sm:text-4xl font-bold">Gallery</h1>
           <p className="mt-3 text-industrial-300">Machines, manufacturing process, and project installations.</p>
         </div>
