@@ -4,12 +4,13 @@ import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { SectionHeading, FeatureCard } from '@/components/ui/CommonComponents';
-import { categories, products } from '@/data/products';
-import { industriesData } from '@/data/products';;
-import { siteConfig } from '@/lib/config';
+import { categories, industriesData } from '@/lib/data';
+import { useProducts } from '@/hooks/useLocalData';
+import { siteConfig } from '@/lib/constants';
 import { CTASection } from '@/components/layout/MobileCTA';
 
 export default function HomePage() {
+  const products = useProducts();
   return (
     <>
       {/* Hero */}
