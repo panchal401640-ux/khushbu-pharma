@@ -2,16 +2,85 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { AdminLayout } from '../AdminLayout';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 interface MediaItem {
   id: string;
   name: string;
   type: 'photo' | 'video';
   url: string;
+  blob?: string;
   size: number;
   category: string;
-  thumbnail?: string;
   createdAt: string;
+}
+
+const DB_NAME = 'kpm_media_db';
+const DB_VERSION = 1;
+const STORE_NAME = 'media';
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getAllMedia(): Promise<MediaItem[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.getAll();
+      request.onsuccess = () => {
+        const items = request.result.sort((a: MediaItem, b: MediaItem) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        resolve(items);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function addMediaToDB(item: MediaItem): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.add(item);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function deleteMediaFromDB(id: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getStorageUsage(): Promise<{ used: number; quota: number }> {
+  if (navigator.storage && navigator.storage.estimate) {
+    const estimate = await navigator.storage.estimate();
+    return { used: estimate.usage || 0, quota: estimate.quota || 0 };
+  }
+  return { used: 0, quota: 0 };
 }
 
 function logActivity(action: string) {
@@ -24,96 +93,141 @@ function logActivity(action: string) {
   } catch {}
 }
 
-function getMedia(): MediaItem[] {
-  try {
-    const stored = localStorage.getItem('kpm_media');
-    return stored ? JSON.parse(stored) : [];
-  } catch { return []; }
-}
-
-function saveMedia(media: MediaItem[]) {
-  try {
-    localStorage.setItem('kpm_media', JSON.stringify(media));
-  } catch (e) {
-    alert('Storage full! Delete some media files first to free up space.');
-  }
-}
-
 const CATEGORIES = ['Product Photos', 'Factory Photos', 'Team Photos', 'Gallery', 'Website Banners', 'Logos', 'Certificates', 'Other'];
 
 export default function AdminMediaPage() {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [activeTab, setActiveTab] = useState<'photos' | 'videos'>('photos');
   const [selectedCategory, setSelectedCategory] = useState('Product Photos');
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadFileName, setUploadFileName] = useState('');
   const [showOnlineSearch, setShowOnlineSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{ name: string; progress: number } | null>(null);
-  const [filterCategory, setFilterCategory] = useState('All');
+  const [storageInfo, setStorageInfo] = useState({ used: 0, quota: 0 });
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setMedia(getMedia());
+    loadMedia();
+    updateStorageInfo();
   }, []);
 
-  const addMedia = (item: Omit<MediaItem, 'id' | 'createdAt'>) => {
-    const newItem: MediaItem = { ...item, id: Date.now().toString() + Math.random().toString(36).slice(2), createdAt: new Date().toISOString() };
-    const updated = [newItem, ...media];
-    setMedia(updated);
-    saveMedia(updated);
-    logActivity(`Added ${item.type}: ${item.name}`);
+  const loadMedia = async () => {
+    const items = await getAllMedia();
+    setMedia(items);
   };
 
-  const deleteMedia = (id: string) => {
-    const item = media.find(m => m.id === id);
-    if (confirm(`"${item?.name}" delete karna hai?`)) {
-      const updated = media.filter(m => m.id !== id);
-      setMedia(updated);
-      saveMedia(updated);
-      logActivity(`Deleted media: ${item?.name}`);
+  const updateStorageInfo = async () => {
+    const info = await getStorageUsage();
+    setStorageInfo(info);
+  };
+
+  const addMediaItem = async (item: Omit<MediaItem, 'id' | 'createdAt'>) => {
+    const newItem: MediaItem = {
+      ...item,
+      id: Date.now().toString() + Math.random().toString(36).slice(2),
+      createdAt: new Date().toISOString(),
+    };
+    try {
+      await addMediaToDB(newItem);
+      setMedia(prev => [newItem, ...prev]);
+      logActivity(`Added ${item.type}: ${item.name}`);
+      updateStorageInfo();
+    } catch (err: any) {
+      if (err.name === 'QuotaExceededError') {
+        alert('Storage full hai! Pehle kuch purani photos/videos delete karo.');
+      } else {
+        alert(`Error: ${err.message}`);
+      }
     }
   };
 
-  const processFiles = useCallback((files: FileList | File[], type: 'photo' | 'video') => {
-    const fileArray = Array.from(files);
-    let processed = 0;
+  const deleteMediaItem = async (id: string) => {
+    const item = media.find(m => m.id === id);
+    if (confirm(`"${item?.name}" delete karna hai?`)) {
+      await deleteMediaFromDB(id);
+      setMedia(prev => prev.filter(m => m.id !== id));
+      logActivity(`Deleted: ${item?.name}`);
+      updateStorageInfo();
+    }
+  };
 
-    fileArray.forEach((file, index) => {
+  const processFiles = useCallback(async (files: FileList | File[], type: 'photo' | 'video') => {
+    setUploading(true);
+    const fileArray = Array.from(files);
+
+    for (const file of fileArray) {
       if (type === 'video' && file.size > 100 * 1024 * 1024) {
-        alert(`"${file.name}" bahut bada hai! Max 100MB allowed.`);
-        processed++;
-        return;
+        alert(`"${file.name}" bahut bada hai! Max 100MB.`);
+        continue;
       }
 
-      setUploadProgress({ name: file.name, progress: 0 });
+      setUploadFileName(file.name);
+      setUploadProgress(0);
 
-      const reader = new FileReader();
-      reader.onprogress = (e) => {
-        if (e.lengthComputable) {
-          setUploadProgress({ name: file.name, progress: Math.round((e.loaded / e.total) * 100) });
-        }
-      };
-      reader.onload = (ev) => {
-        addMedia({
+      try {
+        setUploadProgress(50);
+        const folder = type === 'photo' ? 'kpm/photos' : 'kpm/videos';
+        const result = await uploadToCloudinary(file, folder);
+        setUploadProgress(100);
+
+        await addMediaItem({
           name: file.name.replace(/\.[^/.]+$/, ''),
           type,
-          url: ev.target?.result as string,
+          url: result.secure_url,
           size: file.size,
           category: selectedCategory,
         });
-        processed++;
-        if (processed === fileArray.length) {
-          setUploadProgress(null);
-        } else {
-          setUploadProgress({ name: fileArray[processed].name, progress: 0 });
-        }
+      } catch (err: any) {
+        alert(`Upload failed: ${err.message}`);
+      }
+    }
+
+    setUploading(false);
+    setUploadFileName('');
+    setUploadProgress(0);
+  }, [media, selectedCategory]);
+
+  const compressImage = (file: File, maxWidth: number, quality: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let w = img.width;
+          let h = img.height;
+          if (w > maxWidth) {
+            h = (h * maxWidth) / w;
+            w = maxWidth;
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => reject(new Error('Image load failed'));
+        img.src = e.target?.result as string;
       };
+      reader.onerror = () => reject(new Error('File read failed'));
       reader.readAsDataURL(file);
     });
-  }, [media, selectedCategory]);
+  };
+
+  const readAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('File read failed'));
+      reader.readAsDataURL(file);
+    });
+  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) processFiles(e.target.files, 'photo');
@@ -137,14 +251,13 @@ export default function AdminMediaPage() {
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files?.length) {
-      const files = e.dataTransfer.files;
-      const hasVideo = Array.from(files).some(f => f.type.startsWith('video/'));
-      processFiles(files, hasVideo ? 'video' : 'photo');
+      const hasVideo = Array.from(e.dataTransfer.files).some(f => f.type.startsWith('video/'));
+      processFiles(e.dataTransfer.files, hasVideo ? 'video' : 'photo');
     }
   }, [processFiles]);
 
   const addOnlinePhoto = (url: string, name: string) => {
-    addMedia({ name, type: 'photo', url, size: 0, category: selectedCategory });
+    addMediaItem({ name, type: 'photo', url, size: 0, category: selectedCategory });
   };
 
   const searchOnlinePhotos = async () => {
@@ -168,16 +281,11 @@ export default function AdminMediaPage() {
           'https://images.unsplash.com/photo-1581093450021-4a7360e9a6b5?w=800',
           'https://images.unsplash.com/photo-1565043666747-69f6646db940?w=800',
           'https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?w=800',
-          'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=800',
-          'https://images.unsplash.com/photo-1607400201889-565b1ee75f8e?w=800',
         );
       }
       setSearchResults(results.slice(0, 12));
     } catch {
-      setSearchResults([
-        'https://images.unsplash.com/photo-1581093458791-9d42e3c7e117?w=800',
-        'https://images.unsplash.com/photo-1581093450021-4a7360e9a6b5?w=800',
-      ]);
+      setSearchResults(['https://images.unsplash.com/photo-1581093458791-9d42e3c7e117?w=800']);
     }
     setIsSearching(false);
   };
@@ -189,46 +297,58 @@ export default function AdminMediaPage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
   const photos = media.filter(m => m.type === 'photo');
   const videos = media.filter(m => m.type === 'video');
   const filteredPhotos = filterCategory === 'All' ? photos : photos.filter(p => p.category === filterCategory);
   const filteredVideos = filterCategory === 'All' ? videos : videos.filter(v => v.category === filterCategory);
-  const allCategories = ['All', ...CATEGORIES];
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Media Gallery</h1>
-          <p className="text-sm text-gray-500 mt-1">Photos aur Videos upload aur manage karo</p>
+          <p className="text-sm text-gray-500 mt-1">Photos aur Videos upload aur manage karo - Unlimited Storage!</p>
         </div>
 
-        {/* Upload Area with Drag & Drop */}
-        <div
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 ${
-            dragActive
-              ? 'border-green-500 bg-green-50 scale-[1.02]'
-              : 'border-gray-300 bg-gray-50 hover:border-green-400 hover:bg-green-50/50'
-          }`}
-        >
-          <div className="text-4xl mb-3">{dragActive ? '📥' : '📁'}</div>
-          <p className="text-gray-700 font-medium">
-            {dragActive ? 'Chhod do yahan pe!' : 'Files yahan drag & drop karo'}
-          </p>
-          <p className="text-sm text-gray-500 mt-1 mb-4">Ya buttons se upload karo</p>
+        {/* Storage Info */}
+        {storageInfo.quota > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-4">
+            <div className="text-2xl">💾</div>
+            <div className="flex-1">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-blue-800 font-medium">Storage: {formatBytes(storageInfo.used)} / {formatBytes(storageInfo.quota)}</span>
+                <span className="text-blue-600">{Math.round((storageInfo.used / storageInfo.quota) * 100)}% used</span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2">
+                <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${Math.min((storageInfo.used / storageInfo.quota) * 100, 100)}%` }} />
+              </div>
+            </div>
+          </div>
+        )}
 
+        {/* Upload Area */}
+        <div onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
+          className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200 ${
+            dragActive ? 'border-green-500 bg-green-50 scale-[1.02]' : 'border-gray-300 bg-gray-50 hover:border-green-400 hover:bg-green-50/50'
+          }`}>
+          <div className="text-4xl mb-3">{dragActive ? '📥' : '📁'}</div>
+          <p className="text-gray-700 font-medium">{dragActive ? 'Chhod do yahan pe!' : 'Files yahan drag & drop karo'}</p>
+          <p className="text-sm text-gray-500 mt-1 mb-4">Ya buttons se upload karo - Compressed images stored honge</p>
           <div className="flex flex-wrap justify-center gap-3">
             <input ref={photoInputRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
             <input ref={videoInputRef} type="file" accept="video/*" multiple onChange={handleVideoUpload} className="hidden" />
-
-            <button onClick={() => photoInputRef.current?.click()} className="px-6 py-3 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 flex items-center gap-2">
+            <button onClick={() => photoInputRef.current?.click()} disabled={uploading} className="px-6 py-3 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 flex items-center gap-2 disabled:opacity-50">
               📸 Photos Upload
             </button>
-            <button onClick={() => videoInputRef.current?.click()} className="px-6 py-3 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20 flex items-center gap-2">
+            <button onClick={() => videoInputRef.current?.click()} disabled={uploading} className="px-6 py-3 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20 flex items-center gap-2 disabled:opacity-50">
               🎬 Video Upload (Max 100MB)
             </button>
             <button onClick={() => setShowOnlineSearch(!showOnlineSearch)} className="px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2">
@@ -238,14 +358,14 @@ export default function AdminMediaPage() {
         </div>
 
         {/* Upload Progress */}
-        {uploadProgress && (
+        {uploading && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-green-800 truncate max-w-[70%]">{uploadProgress.name}</span>
-              <span className="text-sm text-green-600">{uploadProgress.progress}%</span>
+              <span className="text-sm font-medium text-green-800 truncate max-w-[70%]">📤 {uploadFileName}</span>
+              <span className="text-sm text-green-600">{uploadProgress}%</span>
             </div>
             <div className="w-full bg-green-200 rounded-full h-2">
-              <div className="bg-green-600 h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress.progress}%` }} />
+              <div className="bg-green-600 h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
             </div>
           </div>
         )}
@@ -258,7 +378,7 @@ export default function AdminMediaPage() {
               <button onClick={() => setShowOnlineSearch(false)} className="text-blue-500 hover:text-blue-700 text-sm">✕</button>
             </div>
             <div className="flex gap-2 mb-3">
-              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchOnlinePhotos()} placeholder="Search... (e.g., 'pharmaceutical machine', 'tablet press')" className="flex-1 rounded-xl border border-blue-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none" />
+              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchOnlinePhotos()} placeholder="Search... (e.g., 'pharmaceutical machine')" className="flex-1 rounded-xl border border-blue-300 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none" />
               <button onClick={searchOnlinePhotos} disabled={isSearching} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
                 {isSearching ? 'Searching...' : 'Search'}
               </button>
@@ -278,10 +398,11 @@ export default function AdminMediaPage() {
           </div>
         )}
 
-        {/* Category Filter + Tabs */}
+        {/* Filter + Tabs */}
         <div className="flex flex-wrap items-center gap-3">
           <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none">
-            {allCategories.map(c => <option key={c} value={c}>{c === 'All' ? '📁 All Categories' : c}</option>)}
+            <option value="All">📁 All Categories</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className="rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none">
             <optgroup label="Upload to Category">
@@ -311,15 +432,13 @@ export default function AdminMediaPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {filteredPhotos.map(item => (
                   <div key={item.id} className="relative group rounded-xl overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
-                    <img src={item.url} alt={item.name} className="w-full h-40 object-cover" />
+                    <img src={item.url} alt={item.name} className="w-full h-40 object-cover" loading="lazy" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <p className="text-white text-xs font-medium truncate">{item.name}</p>
                       <p className="text-white/60 text-[10px]">{item.category} • {formatSize(item.size)}</p>
                     </div>
-                    <button onClick={() => deleteMedia(item.id)} className="absolute top-2 right-2 h-7 w-7 bg-red-500 text-white rounded-full text-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 shadow-lg">
-                      ×
-                    </button>
+                    <button onClick={() => deleteMediaItem(item.id)} className="absolute top-2 right-2 h-7 w-7 bg-red-500 text-white rounded-full text-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 shadow-lg">×</button>
                   </div>
                 ))}
               </div>
@@ -340,9 +459,7 @@ export default function AdminMediaPage() {
                       <p className="text-gray-800 text-xs font-medium truncate">{item.name}</p>
                       <p className="text-gray-400 text-[10px]">{item.category} • {formatSize(item.size)}</p>
                     </div>
-                    <button onClick={() => deleteMedia(item.id)} className="absolute top-2 right-2 h-7 w-7 bg-red-500 text-white rounded-full text-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 shadow-lg">
-                      ×
-                    </button>
+                    <button onClick={() => deleteMediaItem(item.id)} className="absolute top-2 right-2 h-7 w-7 bg-red-500 text-white rounded-full text-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600 shadow-lg">×</button>
                   </div>
                 ))}
               </div>
