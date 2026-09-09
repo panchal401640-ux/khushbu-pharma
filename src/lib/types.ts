@@ -39,6 +39,7 @@ export interface Product {
   features: string[];
   industries: string[];
   images: ProductImage[];
+  videos?: { src: string; title: string }[];
   brochure?: string;
   technicalSpecifications: TechnicalSpecification[];
   faq: ProductFAQ[];
