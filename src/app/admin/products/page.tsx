@@ -4,18 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { AdminLayout } from '../AdminLayout';
 import { products as defaultProducts } from '@/lib/data';
 import { Product } from '@/lib/types';
-import {
-  Plus,
-  Search,
-  Edit3,
-  Trash2,
-  Eye,
-  Save,
-  X,
-  ChevronDown,
-  ChevronUp,
-  Image as ImageIcon,
-} from 'lucide-react';
+import { Plus, Search, Edit3, Trash2, Eye, Save, X, ChevronDown, ChevronUp, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
+import { loadProducts, saveProducts } from '@/hooks/useLocalData';
 
 export default function AdminProductsPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -26,50 +16,40 @@ export default function AdminProductsPage() {
   const [saveMsg, setSaveMsg] = useState('');
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('kpm_products');
-      if (stored) {
-        setAllProducts(JSON.parse(stored));
-      } else {
-        setAllProducts(defaultProducts);
-        localStorage.setItem('kpm_products', JSON.stringify(defaultProducts));
-      }
-    } catch {
-      setAllProducts(defaultProducts);
-    }
+    loadProducts().then(prods => setAllProducts(prods));
   }, []);
 
-  const saveProducts = (prods: Product[]) => {
+  const handleSaveProducts = async (prods: Product[]) => {
     setAllProducts(prods);
     try {
-      localStorage.setItem('kpm_products', JSON.stringify(prods));
+      await saveProducts(prods);
       setSaveMsg('Saved successfully!');
       setTimeout(() => setSaveMsg(''), 3000);
     } catch {
-      setSaveMsg('ERROR: Storage full! Delete some product photos first.');
+      setSaveMsg('ERROR: Storage error! Try again.');
       setTimeout(() => setSaveMsg(''), 5000);
     }
   };
 
   const handleSave = (product: Product) => {
     if (isAdding) {
-      saveProducts([...allProducts, { ...product, id: Date.now().toString() }]);
+      handleSaveProducts([...allProducts, { ...product, id: Date.now().toString() }]);
       setIsAdding(false);
     } else {
-      saveProducts(allProducts.map((p) => (p.id === product.id ? product : p)));
+      handleSaveProducts(allProducts.map((p) => (p.id === product.id ? product : p)));
     }
     setEditing(null);
   };
 
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      saveProducts(allProducts.filter((p) => p.id !== id));
+      handleSaveProducts(allProducts.filter((p) => p.id !== id));
     }
   };
 
   const handleReset = () => {
     if (confirm('Reset all products to default?')) {
-      saveProducts(defaultProducts);
+      handleSaveProducts(defaultProducts);
     }
   };
 
@@ -368,36 +348,37 @@ function ProductForm({
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const videoInputRef = React.useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const result = ev.target?.result as string;
-        if (result) {
-          updateField('images', [...form.images, { src: result, alt: form.name || file.name }]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const result = await uploadToCloudinary(file, 'kpm/products');
+        updateField('images', [...form.images, { src: result.secure_url, alt: form.name || file.name }]);
+      }
+    } catch (err) {
+      alert('Upload failed: ' + (err as Error).message);
+    }
+    setUploading(false);
     e.target.value = '';
   };
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const result = ev.target?.result as string;
-        if (result) {
-          updateField('videos', [...(form.videos || []), { src: result, title: file.name.replace(/\.[^/.]+$/, '') }]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const result = await uploadToCloudinary(file, 'kpm/videos');
+        updateField('videos', [...(form.videos || []), { src: result.secure_url, title: file.name.replace(/\.[^/.]+$/, '') }]);
+      }
+    } catch (err) {
+      alert('Upload failed: ' + (err as Error).message);
+    }
+    setUploading(false);
     e.target.value = '';
   };
   const removeImage = (i: number) => {
@@ -548,10 +529,11 @@ function ProductForm({
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+            disabled={uploading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
           >
-            <Plus className="w-4 h-4" />
-            Upload Image
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {uploading ? 'Uploading...' : 'Upload Image'}
           </button>
         </div>
 
@@ -586,10 +568,11 @@ function ProductForm({
           />
           <button
             onClick={() => videoInputRef.current?.click()}
-            className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+            disabled={uploading}
+            className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50"
           >
-            <Plus className="w-4 h-4" />
-            Upload Video
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {uploading ? 'Uploading...' : 'Upload Video'}
           </button>
         </div>
 
