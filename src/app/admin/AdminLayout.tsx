@@ -47,54 +47,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const products = localStorage.getItem('kpm_products');
-      if (products) {
-        const parsed = JSON.parse(products);
-        let cleaned = false;
-        const fixed = parsed.map((p: any) => {
-          if (p.images) {
-            const cleanImages = p.images.filter((img: any) => {
-              if (img.src && img.src.startsWith('data:image')) {
-                cleaned = true;
-                return false;
-              }
-              return true;
-            });
-            if (cleanImages.length !== p.images.length) {
-              return { ...p, images: cleanImages };
-            }
-          }
-          if (p.videos) {
-            const cleanVideos = p.videos.filter((v: any) => {
-              if (v.src && v.src.startsWith('data:video')) {
-                cleaned = true;
-                return false;
-              }
-              return true;
-            });
-            if (cleanVideos.length !== p.videos.length) {
-              return { ...p, videos: cleanVideos };
-            }
-          }
-          return p;
-        });
-        if (cleaned) {
-          localStorage.setItem('kpm_products', JSON.stringify(fixed));
-        }
+      if (products && products.length > 200000) {
+        localStorage.removeItem('kpm_products');
+        localStorage.removeItem('kpm_media');
+        localStorage.removeItem('kpm_logo');
+        localStorage.removeItem('kpm_settings');
+        localStorage.removeItem('kpm_activity');
+        localStorage.removeItem('kpm_activity_log');
       }
-      const media = localStorage.getItem('kpm_media');
-      if (media) {
-        const parsed = JSON.parse(media);
-        const cleanMedia = parsed.filter((m: any) => {
-          if (m.url && (m.url.startsWith('data:image') || m.url.startsWith('data:video'))) {
-            return false;
-          }
-          return true;
-        });
-        if (cleanMedia.length !== parsed.length) {
-          localStorage.setItem('kpm_media', JSON.stringify(cleanMedia));
-        }
-      }
-    } catch {}
+    } catch {
+      try {
+        localStorage.clear();
+        localStorage.setItem('kpm_admin_auth', 'true');
+      } catch {}
+    }
 
     setLoading(false);
   }, []);
