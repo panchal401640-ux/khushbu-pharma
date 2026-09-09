@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { SectionHeading, FeatureCard } from '@/components/ui/CommonComponents';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { categories, industriesData } from '@/lib/data';
 import { useProducts } from '@/hooks/useLocalData';
 import { siteConfig } from '@/lib/constants';
@@ -120,10 +121,14 @@ export default function HomePage() {
             {products.slice(0, 6).map((product) => (
               <Link key={product.id} href={`/products/${product.slug}`} className="group">
                 <div className="card-hover overflow-hidden h-full flex flex-col">
-                  <div className="h-48 bg-industrial-100 flex items-center justify-center">
-                    <svg className="h-20 w-20 text-industrial-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                    </svg>
+                  <div className="h-48 bg-industrial-100 flex items-center justify-center overflow-hidden">
+                    {product.images && product.images.length > 0 ? (
+                      <ProductImage src={product.images[0].src} alt={product.images[0].alt || product.name} name={product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <svg className="h-20 w-20 text-industrial-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                      </svg>
+                    )}
                   </div>
                   <div className="p-5 flex-1 flex flex-col">
                     <span className="text-xs font-medium text-primary-700 uppercase tracking-wider">{product.category}</span>
