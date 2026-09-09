@@ -283,6 +283,7 @@ function ProductForm({
       features: [],
       industries: [],
       images: [],
+      videos: [],
       technicalSpecifications: [{ parameter: '', specification: '' }],
       faq: [],
       seoTitle: '',
@@ -366,6 +367,7 @@ function ProductForm({
   };
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const videoInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -376,6 +378,22 @@ function ProductForm({
         const result = ev.target?.result as string;
         if (result) {
           updateField('images', [...form.images, { src: result, alt: form.name || file.name }]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const result = ev.target?.result as string;
+        if (result) {
+          updateField('videos', [...(form.videos || []), { src: result, title: file.name.replace(/\.[^/.]+$/, '') }]);
         }
       };
       reader.readAsDataURL(file);
@@ -534,6 +552,44 @@ function ProductForm({
           >
             <Plus className="w-4 h-4" />
             Upload Image
+          </button>
+        </div>
+
+        {/* Videos */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+          <h3 className="font-semibold text-slate-900 mb-4">Product Videos</h3>
+          <div className="flex flex-wrap gap-3 mb-4">
+            {(form.videos || []).map((vid, i) => (
+              <div key={i} className="relative group">
+                <video
+                  src={vid.src}
+                  className="h-24 w-24 rounded-xl object-cover border border-slate-200"
+                  muted
+                />
+                <p className="text-xs text-slate-500 mt-1 truncate max-w-[96px]">{vid.title}</p>
+                <button
+                  onClick={() => updateField('videos', (form.videos || []).filter((_, idx) => idx !== i))}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs hover:bg-red-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            multiple
+            onChange={handleVideoUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => videoInputRef.current?.click()}
+            className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Upload Video
           </button>
         </div>
 
