@@ -365,11 +365,22 @@ function ProductForm({
     updateField('faq', form.faq.filter((_, idx) => idx !== i));
   };
 
-  const addImage = () => {
-    const url = prompt('Enter image URL:');
-    if (url?.trim()) {
-      updateField('images', [...form.images, { src: url.trim(), alt: form.name }]);
-    }
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const result = ev.target?.result as string;
+        if (result) {
+          updateField('images', [...form.images, { src: result, alt: form.name || file.name }]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
   };
   const removeImage = (i: number) => {
     updateField('images', form.images.filter((_, idx) => idx !== i));
@@ -509,12 +520,20 @@ function ProductForm({
               </div>
             ))}
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileUpload}
+            className="hidden"
+          />
           <button
-            onClick={addImage}
-            className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-2"
+            onClick={() => fileInputRef.current?.click()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Add Image URL
+            Upload Image
           </button>
         </div>
 
