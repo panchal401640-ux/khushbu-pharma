@@ -5,6 +5,7 @@ import { AdminLayout } from '../AdminLayout';
 import { products as defaultProducts } from '@/lib/data';
 import { Product } from '@/lib/types';
 import { Plus, Search, Edit3, Trash2, Eye, Save, X, ChevronDown, ChevronUp, Image as ImageIcon, Upload, Loader2 } from 'lucide-react';
+import { uploadToImgBB } from '@/lib/imgbb';
 import { loadProducts, saveProducts } from '@/hooks/useLocalData';
 
 export default function AdminProductsPage() {
@@ -16,7 +17,9 @@ export default function AdminProductsPage() {
   const [saveMsg, setSaveMsg] = useState('');
 
   useEffect(() => {
-    loadProducts().then(prods => setAllProducts(prods));
+    loadProducts().then(prods => {
+      setAllProducts(prods);
+    });
   }, []);
 
   const handleSaveProducts = async (prods: Product[]) => {
@@ -280,6 +283,10 @@ function ProductForm({
   const [specValue, setSpecValue] = useState('');
   const [faqQuestion, setFaqQuestion] = useState('');
   const [faqAnswer, setFaqAnswer] = useState('');
+  const [showCloudinaryPicker, setShowCloudinaryPicker] = useState(false);
+  const [cloudinaryImages, setCloudinaryImages] = useState<any[]>([]);
+  const [cloudinaryLoading, setCloudinaryLoading] = useState(false);
+  const [cloudinaryCursor, setCloudinaryCursor] = useState<string | null>(null);
 
   const updateField = (field: string, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -350,14 +357,39 @@ function ProductForm({
   const videoInputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let w = img.width, h = img.height;
+          if (w > 600) { h = (h * 600) / w; w = 600; }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) { reject('No canvas'); return; }
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.5));
+        };
+        img.onerror = () => reject('Image load failed');
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject('File read failed');
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        const result = await uploadToCloudinary(file, 'kpm/products');
-        updateField('images', [...form.images, { src: result.secure_url, alt: form.name || file.name }]);
+        if (!file.type.startsWith('image/')) continue;
+        const result = await uploadToImgBB(file);
+        updateField('images', [...form.images, { src: result.url, alt: form.name || file.name }]);
       }
     } catch (err) {
       alert('Upload failed: ' + (err as Error).message);
@@ -372,8 +404,10 @@ function ProductForm({
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        const result = await uploadToCloudinary(file, 'kpm/videos');
-        updateField('videos', [...(form.videos || []), { src: result.secure_url, title: file.name.replace(/\.[^/.]+$/, '') }]);
+        if (!file.type.startsWith('video/')) continue;
+        if (file.size > 100 * 1024 * 1024) { alert(`${file.name} bahut bada hai! Max 100MB.`); continue; }
+        const result = await uploadToImgBB(file);
+        updateField('videos', [...(form.videos || []), { src: result.url, title: file.name.replace(/\.[^/.]+$/, '') }]);
       }
     } catch (err) {
       alert('Upload failed: ' + (err as Error).message);
@@ -383,6 +417,29 @@ function ProductForm({
   };
   const removeImage = (i: number) => {
     updateField('images', form.images.filter((_, idx) => idx !== i));
+  };
+
+  const loadCloudinaryImages = async (append: boolean = false) => {
+    setCloudinaryLoading(true);
+    try {
+      const url = `/api/cloudinary?max_results=20${cloudinaryCursor && append ? `&next_cursor=${cloudinaryCursor}` : ''}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.resources) {
+        if (append) {
+          setCloudinaryImages(prev => [...prev, ...data.resources]);
+        } else {
+          setCloudinaryImages(data.resources);
+        }
+        setCloudinaryCursor(data.next_cursor);
+      }
+    } catch {}
+    setCloudinaryLoading(false);
+  };
+
+  const pickCloudinaryImage = (item: any) => {
+    updateField('images', [...form.images, { src: item.url, alt: form.name || item.name }]);
+    setShowCloudinaryPicker(false);
   };
 
   const generateSlug = () => {
@@ -527,14 +584,60 @@ function ProductForm({
             onChange={handleFileUpload}
             className="hidden"
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-          >
-            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            {uploading ? 'Uploading...' : 'Upload Image'}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              {uploading ? 'Uploading...' : 'Upload Image'}
+            </button>
+            <button
+              onClick={() => { setShowCloudinaryPicker(!showCloudinaryPicker); if (!showCloudinaryPicker && cloudinaryImages.length === 0) loadCloudinaryImages(); }}
+              className="px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              ☁️ Pick from Cloudinary
+            </button>
+          </div>
+
+          {showCloudinaryPicker && (
+            <div className="mt-4 border border-purple-200 rounded-xl p-4 bg-purple-50">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-purple-900">☁️ Cloudinary Images</h4>
+                <button onClick={() => setShowCloudinaryPicker(false)} className="text-purple-400 hover:text-purple-600 text-sm">✕</button>
+              </div>
+              {cloudinaryLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-6 h-6 border-3 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              {!cloudinaryLoading && cloudinaryImages.length > 0 && (
+                <>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {cloudinaryImages.map((item) => (
+                      <div key={item.id} className="relative group cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-purple-500 transition-all" onClick={() => pickCloudinaryImage(item)}>
+                        <img src={item.url} alt={item.name} className="w-full h-24 object-cover" loading="lazy" />
+                        <div className="absolute inset-0 bg-purple-600/0 group-hover:bg-purple-600/30 transition-all flex items-center justify-center">
+                          <span className="text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-purple-600 px-2 py-1 rounded">Select</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {cloudinaryCursor && (
+                    <div className="text-center mt-3">
+                      <button onClick={() => loadCloudinaryImages(true)} disabled={cloudinaryLoading} className="px-4 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50">
+                        Load More
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+              {!cloudinaryLoading && cloudinaryImages.length === 0 && (
+                <p className="text-sm text-purple-600 text-center py-4">Koi image nahi mili Cloudinary pe</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Videos */}
