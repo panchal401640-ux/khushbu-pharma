@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { AdminLayout } from '../AdminLayout';
-import { uploadToCloudinary } from '@/lib/cloudinary';
+import { uploadToImgBB } from '@/lib/imgbb';
 
 interface MediaItem {
   id: string;
@@ -97,7 +97,7 @@ const CATEGORIES = ['Product Photos', 'Factory Photos', 'Team Photos', 'Gallery'
 
 export default function AdminMediaPage() {
   const [media, setMedia] = useState<MediaItem[]>([]);
-  const [activeTab, setActiveTab] = useState<'photos' | 'videos'>('photos');
+  const [activeTab, setActiveTab] = useState<'photos' | 'videos' | 'cloudinary'>('photos');
   const [selectedCategory, setSelectedCategory] = useState('Product Photos');
   const [filterCategory, setFilterCategory] = useState('All');
   const [dragActive, setDragActive] = useState(false);
@@ -109,6 +109,13 @@ export default function AdminMediaPage() {
   const [searchResults, setSearchResults] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [storageInfo, setStorageInfo] = useState({ used: 0, quota: 0 });
+  const [cloudinaryFolders, setCloudinaryFolders] = useState<{name: string; path: string}[]>([]);
+  const [cloudinaryImages, setCloudinaryImages] = useState<any[]>([]);
+  const [cloudinaryLoading, setCloudinaryLoading] = useState(false);
+  const [cloudinaryError, setCloudinaryError] = useState('');
+  const [currentFolder, setCurrentFolder] = useState('');
+  const [cloudinaryCursor, setCloudinaryCursor] = useState<string | null>(null);
+  const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -173,7 +180,7 @@ export default function AdminMediaPage() {
       try {
         setUploadProgress(50);
         const folder = type === 'photo' ? 'kpm/photos' : 'kpm/videos';
-        const result = await uploadToCloudinary(file, folder);
+        const result = await uploadToImgBB(file);
         setUploadProgress(100);
 
         await addMediaItem({
@@ -255,6 +262,82 @@ export default function AdminMediaPage() {
       processFiles(e.dataTransfer.files, hasVideo ? 'video' : 'photo');
     }
   }, [processFiles]);
+
+  const loadCloudinaryFolders = async (folder: string = '') => {
+    setCloudinaryLoading(true);
+    setCloudinaryError('');
+    try {
+      const res = await fetch(`/api/cloudinary/folders?folder=${folder}`);
+      const data = await res.json();
+      if (data.error) {
+        setCloudinaryError(data.error);
+      } else {
+        setCloudinaryFolders(data.folders || []);
+      }
+    } catch (err: any) {
+      setCloudinaryError('Failed to load folders: ' + err.message);
+    }
+    setCloudinaryLoading(false);
+  };
+
+  const loadCloudinaryImages = async (folder: string = '', append: boolean = false) => {
+    setCloudinaryLoading(true);
+    setCloudinaryError('');
+    try {
+      const url = `/api/cloudinary?folder=${folder}&max_results=30${cloudinaryCursor && append ? `&next_cursor=${cloudinaryCursor}` : ''}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.error) {
+        setCloudinaryError(data.error);
+      } else {
+        if (append) {
+          setCloudinaryImages(prev => [...prev, ...data.resources]);
+        } else {
+          setCloudinaryImages(data.resources || []);
+        }
+        setCloudinaryCursor(data.next_cursor);
+      }
+    } catch (err: any) {
+      setCloudinaryError('Failed to load images: ' + err.message);
+    }
+    setCloudinaryLoading(false);
+  };
+
+  const browseCloudinaryFolder = (folder: string) => {
+    setCurrentFolder(folder);
+    setCloudinaryImages([]);
+    setCloudinaryCursor(null);
+    loadCloudinaryFolders(folder);
+    loadCloudinaryImages(folder);
+  };
+
+  const addCloudinaryImage = async (item: any) => {
+    setAddingIds(prev => new Set(prev).add(item.id));
+    try {
+      const format = item.format?.toLowerCase() || '';
+      const isVideo = ['mp4', 'webm', 'avi', 'mov', 'mkv'].includes(format);
+      await addMediaItem({
+        name: item.name || item.id.split('/').pop(),
+        type: isVideo ? 'video' : 'photo',
+        url: item.url,
+        size: item.bytes || 0,
+        category: selectedCategory,
+      });
+    } catch (err: any) {
+      alert('Failed to add: ' + err.message);
+    }
+    setAddingIds(prev => {
+      const next = new Set(prev);
+      next.delete(item.id);
+      return next;
+    });
+  };
+
+  const addCloudinaryMultiple = async (items: any[]) => {
+    for (const item of items) {
+      await addCloudinaryImage(item);
+    }
+  };
 
   const addOnlinePhoto = (url: string, name: string) => {
     addMediaItem({ name, type: 'photo', url, size: 0, category: selectedCategory });
@@ -416,10 +499,14 @@ export default function AdminMediaPage() {
             <button onClick={() => setActiveTab('videos')} className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'videos' ? 'bg-purple-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
               🎬 Videos ({videos.length})
             </button>
+            <button onClick={() => { setActiveTab('cloudinary'); loadCloudinaryFolders(); loadCloudinaryImages(); }} className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === 'cloudinary' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+              ☁️ Cloudinary
+            </button>
           </div>
         </div>
 
         {/* Media Grid */}
+        {activeTab !== 'cloudinary' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           {activeTab === 'photos' ? (
             filteredPhotos.length === 0 ? (
@@ -466,6 +553,130 @@ export default function AdminMediaPage() {
             )
           )}
         </div>
+        )}
+
+        {/* Cloudinary Browser */}
+        {activeTab === 'cloudinary' && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <span className="text-2xl">☁️</span>
+                Cloudinary Media Browser
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">Apni Cloudinary library se photos/videos browse karke add karo</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {currentFolder && (
+                <button onClick={() => { const parts = currentFolder.split('/'); parts.pop(); const parent = parts.join('/'); browseCloudinaryFolder(parent); }}
+                  className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 flex items-center gap-1">
+                  ← Back
+                </button>
+              )}
+              <button onClick={() => { loadCloudinaryFolders(currentFolder); loadCloudinaryImages(currentFolder); }}
+                className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-200 flex items-center gap-1">
+                🔄 Refresh
+              </button>
+            </div>
+          </div>
+
+          {cloudinaryError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+              ❌ {cloudinaryError}
+              {cloudinaryError.includes('401') || cloudinaryError.includes('Unauthorized') ? (
+                <p className="text-xs text-red-500 mt-1">Cloudinary email verify karo ya API secret check karo.</p>
+              ) : null}
+            </div>
+          )}
+
+          {/* Current path */}
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span>📁</span>
+            <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">{currentFolder || 'Root'}</span>
+            {cloudinaryImages.length > 0 && (
+              <span className="text-xs text-gray-400">({cloudinaryImages.length} images)</span>
+            )}
+          </div>
+
+          {/* Folders */}
+          {cloudinaryFolders.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {cloudinaryFolders.map(folder => (
+                <button key={folder.path} onClick={() => browseCloudinaryFolder(folder.path)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-200 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all">
+                  📁 {folder.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Loading */}
+          {cloudinaryLoading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <span className="ml-3 text-sm text-gray-500">Loading from Cloudinary...</span>
+            </div>
+          )}
+
+          {/* Images Grid */}
+          {!cloudinaryLoading && cloudinaryImages.length > 0 && (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {cloudinaryImages.map(item => (
+                  <div key={item.id} className="relative group rounded-xl overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow bg-gray-50">
+                    <img src={item.thumbnail} alt={item.name} className="w-full h-40 object-cover" loading="lazy" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-white text-xs font-medium truncate">{item.name}</p>
+                      <p className="text-white/60 text-[10px]">{item.format} • {formatSize(item.bytes)}</p>
+                    </div>
+                    <button onClick={() => addCloudinaryImage(item)} disabled={addingIds.has(item.id)}
+                      className="absolute top-2 right-2 h-8 w-8 bg-green-500 text-white rounded-full text-sm flex items-center justify-center hover:bg-green-600 shadow-lg transition-all disabled:opacity-50">
+                      {addingIds.has(item.id) ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : '+'}
+                    </button>
+                    {/* Copy URL button */}
+                    <button onClick={() => { navigator.clipboard.writeText(item.url); alert('URL copied!'); }}
+                      className="absolute top-2 left-2 h-7 w-7 bg-black/50 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-black/70"
+                      title="Copy URL">
+                      🔗
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Load More */}
+              {cloudinaryCursor && (
+                <div className="text-center pt-4">
+                  <button onClick={() => loadCloudinaryImages(currentFolder, true)} disabled={cloudinaryLoading}
+                    className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                    {cloudinaryLoading ? 'Loading...' : 'Load More Images'}
+                  </button>
+                </div>
+              )}
+
+              {/* Add All visible */}
+              {cloudinaryImages.length > 1 && (
+                <div className="text-center pt-2">
+                  <button onClick={() => addCloudinaryMultiple(cloudinaryImages.filter(img => !addingIds.has(img.id)))}
+                    className="px-6 py-2 bg-green-100 text-green-700 rounded-xl text-sm font-medium hover:bg-green-200 flex items-center gap-2 mx-auto">
+                    ✚ Add All Visible ({cloudinaryImages.filter(img => !addingIds.has(img.id)).length})
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {!cloudinaryLoading && cloudinaryImages.length === 0 && cloudinaryFolders.length === 0 && !cloudinaryError && (
+            <div className="text-center py-12">
+              <div className="text-5xl mb-3">☁️</div>
+              <p className="text-gray-500 font-medium">Cloudinary se images load ho rahe hain...</p>
+              <p className="text-gray-400 text-sm mt-1">Agar koi error aaye to Cloudinary email verify karo</p>
+            </div>
+          )}
+        </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
